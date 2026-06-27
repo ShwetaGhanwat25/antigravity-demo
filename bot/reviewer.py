@@ -157,11 +157,16 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
+                raw = _groq_client.chat.completions.with_raw_response.create(
                     model="llama-3.3-70b-versatile",
                     max_tokens=2048,
                     messages=[{"role": "user", "content": prompt}]
                 )
+                h = raw.headers
+                print(f"[groq:quota] requests remaining: {h.get('x-ratelimit-remaining-requests')} / {h.get('x-ratelimit-limit-requests')} (resets in {h.get('x-ratelimit-reset-requests')})")
+                print(f"[groq:quota] tokens remaining:   {h.get('x-ratelimit-remaining-tokens')} / {h.get('x-ratelimit-limit-tokens')} (resets in {h.get('x-ratelimit-reset-tokens')})")
+                completion = raw.parse()
+                print(f"[groq:usage] prompt={completion.usage.prompt_tokens} completion={completion.usage.completion_tokens} total={completion.usage.total_tokens} tokens")
                 return completion.choices[0].message.content
         except Exception as e:
             if attempt < retries:

@@ -6,7 +6,23 @@ on:
     branches: [main]
 
 jobs:
-  review:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('bot/requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r bot/requirements.txt
+
+  ai-review:
+    needs: install
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -16,6 +32,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('bot/requirements.txt') }}
 
       - name: Install dependencies
         run: pip install -r bot/requirements.txt
