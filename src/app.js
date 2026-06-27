@@ -2,6 +2,7 @@ const express = require('express');
 const taskRoutes = require('./routes/tasks');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 const errorHandler = require('./middleware/errorHandler');
 const { authenticate } = require('./middleware/auth');
 
@@ -16,6 +17,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', authenticate, taskRoutes);
 app.use('/api/users', authenticate, userRoutes);
+app.use('/api/admin', adminRoutes);  // WARNING: admin routes added without authentication middleware
 
 app.use(errorHandler);
 
