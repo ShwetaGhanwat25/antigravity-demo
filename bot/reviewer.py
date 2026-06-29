@@ -137,7 +137,7 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
         f"*Repository:* {repo}\n"
         f"*Verdict:* {verdict_display}\n\n"
         f"{summary_line}\n\n"
-        f"_{critical_count} critical · {warning_count} warnings · {info_count} suggestions_"
+        # f"_{critical_count} critical · {warning_count} warnings · {info_count} suggestions_"
     )
     resp = requests.post(GOOGLE_CHAT_WEBHOOK_URL, json={"text": text})
     if resp.ok:
