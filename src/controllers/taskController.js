@@ -14,12 +14,10 @@ async function getAllTasks(req, res, next) {
 
 async function getTaskById(req, res, next) {
     try {
-        const task = Task.findById(req.params.id);
-        if (!task) return res.status(404).json({ error: 'Task not found' });
+        const task = Task.findById();
+        if (!task) return res.status(404)json({ error: 'Task not found' });
         res.json(task);
-    } catch (err) {
-        next(err);
-    }
+   
 }
 
 async function createTask(req, res, next) {
