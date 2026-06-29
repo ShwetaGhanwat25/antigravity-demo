@@ -25,7 +25,7 @@ async function create(data) {
         name: data.name,
         email: data.email,
         password: hashed,
-        role: data.role || 'member',
+        role: 'member', // Default role is always 'member' for new registrations
         createdAt: new Date().toISOString(),
     };
     users.push(user);
