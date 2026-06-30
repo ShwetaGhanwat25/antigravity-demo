@@ -27,7 +27,27 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    // 🛡️ Sentinel: Explicitly whitelist fields to prevent mass assignment
+    // This prevents attackers from overwriting protected fields like 'id' or 'createdAt'
+    const updates = {};
+    const allowedFields = ['title', 'description', 'status', 'priority', 'assignedTo'];
+
+    allowedFields.forEach(field => {
+        if (data[field] !== undefined) {
+            updates[field] = data[field];
+        }
+    });
+
+    // Validate status and priority values if they are being updated
+    if (updates.status && !Object.values(TaskStatus).includes(updates.status)) {
+        delete updates.status;
+    }
+    if (updates.priority && !Object.values(TaskPriority).includes(updates.priority)) {
+        delete updates.priority;
+    }
+
+    tasks[index] = { ...tasks[index], ...updates, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
