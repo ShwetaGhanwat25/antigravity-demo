@@ -27,7 +27,24 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    // 🛡️ Sentinel: Whitelist fields to prevent mass assignment of protected fields like 'id' or 'createdAt'
+    const { title, description, status, priority, assignedTo } = data;
+    const updates = {};
+
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+
+    // Validate enum values
+    if (status !== undefined && Object.values(TaskStatus).includes(status)) {
+        updates.status = status;
+    }
+    if (priority !== undefined && Object.values(TaskPriority).includes(priority)) {
+        updates.priority = priority;
+    }
+    if (assignedTo !== undefined) updates.assignedTo = assignedTo;
+
+    tasks[index] = { ...tasks[index], ...updates, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
