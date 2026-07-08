@@ -1,0 +1,4 @@
+## 2026-07-08 - [Mass Assignment Protection in Task Model]
+**Vulnerability:** The `Task.update` method was using the spread operator (`...data`) to apply updates directly from the request body to the in-memory task object. This allowed users to overwrite sensitive, immutable fields such as `id`, `createdAt`, and potentially other internal metadata.
+**Learning:** In-memory data structures or direct ORM updates without explicit field whitelisting are highly susceptible to mass assignment. Even if the controller seems to handle it, the model layer should be the final line of defense to ensure data integrity and security.
+**Prevention:** Always implement explicit field whitelisting in update operations. Additionally, implement "Fail Fast" validation for enums and critical fields at the model level to catch invalid data before it persists.
