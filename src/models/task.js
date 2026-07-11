@@ -27,7 +27,25 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    // 🛡️ Sentinel: Mass assignment protection - only allow updating specific fields
+    const allowedFields = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    const filteredData = {};
+
+    for (const field of allowedFields) {
+        if (data[field] !== undefined) {
+            // Validation for enums
+            if (field === 'status' && !Object.values(TaskStatus).includes(data[field])) {
+                throw new Error(`Invalid status: ${data[field]}`);
+            }
+            if (field === 'priority' && !Object.values(TaskPriority).includes(data[field])) {
+                throw new Error(`Invalid priority: ${data[field]}`);
+            }
+            filteredData[field] = data[field];
+        }
+    }
+
+    tasks[index] = { ...tasks[index], ...filteredData, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
