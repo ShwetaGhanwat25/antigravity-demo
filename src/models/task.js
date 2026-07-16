@@ -5,11 +5,21 @@ const tasks = [];
 const TaskStatus = { TODO: 'todo', IN_PROGRESS: 'in_progress', DONE: 'done' };
 const TaskPriority = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
 
+function validateEnums(status, priority) {
+    if (status !== undefined && !Object.values(TaskStatus).includes(status)) {
+        throw new Error(`Invalid status: ${status}. Must be one of: ${Object.values(TaskStatus).join(', ')}`);
+    }
+    if (priority !== undefined && !Object.values(TaskPriority).includes(priority)) {
+        throw new Error(`Invalid priority: ${priority}. Must be one of: ${Object.values(TaskPriority).join(', ')}`);
+    }
+}
+
 function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
 function create(data) {
+    validateEnums(data.status, data.priority);
     const task = {
         id: uuidv4(),
         title: data.title,
@@ -27,7 +37,24 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    validateEnums(data.status, data.priority);
+
+    // 🛡️ Sentinel: Whitelist allowed fields to prevent mass assignment vulnerabilities
+    const allowedFields = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    const updates = {};
+
+    allowedFields.forEach(field => {
+        if (data[field] !== undefined) {
+            updates[field] = data[field];
+        }
+    });
+
+    tasks[index] = {
+        ...tasks[index],
+        ...updates,
+        updatedAt: new Date().toISOString()
+    };
     return tasks[index];
 }
 

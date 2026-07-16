@@ -1,0 +1,4 @@
+## 2026-07-16 - [Task Mass Assignment and Enum Validation]
+**Vulnerability:** The `update` function in `src/models/task.js` allowed mass assignment by spreading the entire `data` object from the request body into the task object. This allowed overwriting sensitive fields like `id`, `createdAt`, and `updatedAt`. Additionally, `status` and `priority` enums were not validated, leading to data integrity issues.
+**Learning:** Models that use simple object spreading for updates are highly susceptible to mass assignment. Even if controllers destructure some fields, the model level should act as a second layer of defense by whitelisting allowed fields.
+**Prevention:** Always use a whitelist of allowed fields in model update functions. Implement strict validation for enum-like fields at the model layer to ensure data consistency and prevent invalid states.
