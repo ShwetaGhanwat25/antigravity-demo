@@ -9,7 +9,21 @@ function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
+function validateEnums(data) {
+    if (data.status !== undefined && !Object.values(TaskStatus).includes(data.status)) {
+        const err = new Error('Invalid status value');
+        err.status = 400;
+        throw err;
+    }
+    if (data.priority !== undefined && !Object.values(TaskPriority).includes(data.priority)) {
+        const err = new Error('Invalid priority value');
+        err.status = 400;
+        throw err;
+    }
+}
+
 function create(data) {
+    validateEnums(data);
     const task = {
         id: uuidv4(),
         title: data.title,
@@ -27,7 +41,19 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    // Filter and extract only whitelisted properties to prevent mass assignment
+    const whitelisted = {};
+    const allowedFields = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    for (const key of allowedFields) {
+        if (data && data[key] !== undefined) {
+            whitelisted[key] = data[key];
+        }
+    }
+
+    validateEnums(whitelisted);
+
+    tasks[index] = { ...tasks[index], ...whitelisted, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
