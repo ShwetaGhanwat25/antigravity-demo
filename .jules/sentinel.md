@@ -1,0 +1,4 @@
+## 2026-07-17 - Mass Assignment Vulnerability in Tasks and Enum Validation Gap
+**Vulnerability:** The task model allowed mass assignment on the `update` operation where an attacker could overwrite critical model metadata such as `id` or `createdAt` by passing them in the request body. Additionally, both `create` and `update` lacked validation for the `status` and `priority` enums, leading to potential data corruption.
+**Learning:** Model updates were previously implemented using direct object merging (`...data`) without field whitelisting. Furthermore, validating optional fields can be tricky; using strict `undefined` checks (`!== undefined`) ensures that empty strings or null values cannot bypass the validations.
+**Prevention:** Always whitelist allowed fields during model creation and updates, and validate any enum constraints using strict `undefined` checks and throwing descriptive errors to fail securely.
