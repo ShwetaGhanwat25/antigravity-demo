@@ -1,0 +1,4 @@
+## 2026-07-20 - Task Model Mass Assignment and Weak Enum Validation
+**Vulnerability:** The task model in `src/models/task.js` lacked protection against mass assignment, allowing users to modify sensitive metadata such as `id`, `createdAt`, or bypass authentication assumptions. Additionally, status and priority enum fields were not validated, allowing arbitrary values to be stored in the database.
+**Learning:** Standardizing security at the model level via field whitelisting and implementing strict "Fail Fast" enum validation ensures that incorrect or malicious payloads are rejected immediately before mutating the application state.
+**Prevention:** Use defensive coding patterns that extract only whitelisted fields, perform explicit enum checks using strict comparison checks (e.g. `!== undefined`), and throw dedicated validation errors with explicit HTTP status codes (e.g. status 400).
