@@ -5,11 +5,34 @@ const tasks = [];
 const TaskStatus = { TODO: 'todo', IN_PROGRESS: 'in_progress', DONE: 'done' };
 const TaskPriority = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
 
+// ✅ GOOD: Fail Fast input validation of status and priority enums.
+// Using strict undefined check to ensure null/empty values don't bypass validation if sent.
+// Throws Error with status = 400 so the custom errorHandler exposes the validation message.
+function validateEnums(data) {
+    if (data.status !== undefined) {
+        const validStatuses = Object.values(TaskStatus);
+        if (!validStatuses.includes(data.status)) {
+            const err = new Error(`Invalid status: ${data.status}. Must be one of ${validStatuses.join(', ')}`);
+            err.status = 400;
+            throw err;
+        }
+    }
+    if (data.priority !== undefined) {
+        const validPriorities = Object.values(TaskPriority);
+        if (!validPriorities.includes(data.priority)) {
+            const err = new Error(`Invalid priority: ${data.priority}. Must be one of ${validPriorities.join(', ')}`);
+            err.status = 400;
+            throw err;
+        }
+    }
+}
+
 function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
 function create(data) {
+    validateEnums(data);
     const task = {
         id: uuidv4(),
         title: data.title,
@@ -24,10 +47,24 @@ function create(data) {
     return task;
 }
 
+// ✅ GOOD: Mass Assignment protection.
+// Explicitly whitelists the allowed fields that can be updated.
+// This prevents attackers from overwriting sensitive fields like id, createdAt, etc.
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    validateEnums(data);
+
+    const whitelist = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    const safeData = {};
+    for (const key of whitelist) {
+        if (data[key] !== undefined) {
+            safeData[key] = data[key];
+        }
+    }
+
+    tasks[index] = { ...tasks[index], ...safeData, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
