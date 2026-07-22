@@ -1,0 +1,4 @@
+## 2026-07-14 - Mass Assignment and Enum Validation in Task Model
+**Vulnerability:** Tasks model previously allowed arbitrary fields to be updated via `tasks.update(id, data)` using `{ ...tasks[index], ...data }` with no field whitelisting or enum validation. This permitted attackers to overwrite read-only metadata like `id` or `createdAt` and corrupt the database with invalid `status` or `priority` values.
+**Learning:** Model-level functions should strictly whitelist fields and enforce strict input validation ("Fail Fast" pattern) even when request parameter parsing exists at the controller level, ensuring defense-in-depth.
+**Prevention:** Always define whitelists of allowed update fields and validate enums using strict type and definedness checks (`!== undefined`). Throw early validation errors with a status property (e.g. `status = 400`) to be caught and correctly reported by global error handlers.
