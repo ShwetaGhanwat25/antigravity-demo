@@ -1,0 +1,6 @@
+# Sentinel Security Journal
+
+## 2026-07-25 - Mass Assignment and Insecure Enum Input in Task Model
+**Vulnerability:** The `update` function in `src/models/task.js` used object spreading (`{ ...tasks[index], ...data }`) directly on the client-provided input `data` without whitelisting allowed fields. This allowed malicious actors to overwrite internal properties such as `id`, `createdAt`, or `updatedAt`. Additionally, `status` and `priority` fields lacked proper enum validation upon task creation or update, enabling arbitrary invalid values to be saved.
+**Learning:** When using volatile in-memory models/stores, developers can easily overlook strict input whitelisting. Without validation schemas or explicit model field mapping, spreading arbitrary request objects directly into data stores allows clients to manipulate metadata. Furthermore, relying on client-side constraints for status and priority can result in corrupt internal application states.
+**Prevention:** Always define an explicit whitelist of modifiable attributes at the model level. Implement server-side verification using strict enum validation, and throw structured errors with `status = 400` so that custom error handlers can fail securely and fast without exposing generic 500 crashes.
