@@ -1,0 +1,4 @@
+## 2026-07-26 - Mass Assignment and Missing Enum Validation in Task Model
+**Vulnerability:** Mass assignment in task update endpoint allowing arbitrary field overwrites (including `id`, `createdAt`), combined with missing input validation for task state enums (`status` and `priority`).
+**Learning:** Overreliance on spread operator (`{ ...tasks[index], ...data }`) in volatile in-memory databases creates easy mass assignment pathways. Furthermore, input state constraints (enums) were not strictly validated, leading to inconsistent and invalid state progression.
+**Prevention:** Always whitelist incoming parameters at the model or controller level, specifically filtering acceptable fields (e.g., `title`, `description`, `status`, `priority`, `assignedTo`). Throw validation errors early (Fail Fast) with a `status = 400` property so express custom error handler doesn't mask them as 500. Use strict `!== undefined` checks when validating optional properties.
