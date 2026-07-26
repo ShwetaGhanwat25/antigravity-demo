@@ -9,7 +9,29 @@ function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
+// 🛡️ Sentinel: Helper function to validate enum values for Status and Priority.
+// We fail fast by throwing a 400 error if values do not match constraints, using strict undefined checks.
+function validateEnums(status, priority) {
+    if (status !== undefined) {
+        const validStatuses = Object.values(TaskStatus);
+        if (!validStatuses.includes(status)) {
+            const err = new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+            err.status = 400;
+            throw err;
+        }
+    }
+    if (priority !== undefined) {
+        const validPriorities = Object.values(TaskPriority);
+        if (!validPriorities.includes(priority)) {
+            const err = new Error(`Invalid priority. Must be one of: ${validPriorities.join(', ')}`);
+            err.status = 400;
+            throw err;
+        }
+    }
+}
+
 function create(data) {
+    validateEnums(data.status, data.priority);
     const task = {
         id: uuidv4(),
         title: data.title,
@@ -27,7 +49,19 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    validateEnums(data.status, data.priority);
+
+    // 🛡️ Sentinel: Whitelist only allowed fields to protect against Mass Assignment.
+    const whitelist = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    const updateData = {};
+    for (const key of whitelist) {
+        if (data[key] !== undefined) {
+            updateData[key] = data[key];
+        }
+    }
+
+    tasks[index] = { ...tasks[index], ...updateData, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
