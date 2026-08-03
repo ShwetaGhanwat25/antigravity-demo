@@ -9,7 +9,22 @@ function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
+function validateEnums(data) {
+    // 🛡️ Sentinel: Validate status and priority enums to prevent invalid input state.
+    if (data.status !== undefined && !Object.values(TaskStatus).includes(data.status)) {
+        const err = new Error('Invalid status value');
+        err.status = 400;
+        throw err;
+    }
+    if (data.priority !== undefined && !Object.values(TaskPriority).includes(data.priority)) {
+        const err = new Error('Invalid priority value');
+        err.status = 400;
+        throw err;
+    }
+}
+
 function create(data) {
+    validateEnums(data);
     const task = {
         id: uuidv4(),
         title: data.title,
@@ -27,7 +42,18 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+    validateEnums(data);
+
+    // 🛡️ Sentinel: Mitigate mass assignment vulnerability by whitelisting fields.
+    const allowed = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    const sanitized = {};
+    for (const key of allowed) {
+        if (data[key] !== undefined) {
+            sanitized[key] = data[key];
+        }
+    }
+
+    tasks[index] = { ...tasks[index], ...sanitized, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
