@@ -1,0 +1,4 @@
+## 2026-08-04 - Lack of User Registration Email Format Validation
+**Vulnerability:** The application accepted any string format for the email field during user registration, completely bypassing the defined helper `isValidEmail`. This missing input validation allowed registration of invalid email records, introducing data integrity risks and potential injection vectors in any downstream email or database operations.
+**Learning:** Having security utility functions in a codebase is ineffective unless they are consistently integrated and enforced at the system boundaries (like request handler controllers) before processing input data.
+**Prevention:** Always validate critical input fields at registration endpoints. Run format validators (e.g., email patterns) eagerly and return structured, descriptive Bad Request (400) client responses for any malformed payload.
