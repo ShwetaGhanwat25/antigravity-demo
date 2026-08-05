@@ -1,0 +1,6 @@
+# Sentinel Security Journal
+
+## 2026-08-05 - Mass Assignment and Input Validation in In-Memory Models
+**Vulnerability:** Mass assignment during task update and lack of enum validation for status/priority fields in the task model allowed any client to inject arbitrary properties (like `id`, `createdAt`, or arbitrary keys) or supply malformed enum states (e.g., status/priority can be set to unsafe strings).
+**Learning:** In RESTful APIs without a formal ORM or rigid schema layer (e.g., using raw in-memory arrays), data updates using the spread/merge operator (`{ ...tasks[index], ...data }`) automatically trust all request payload fields. This creates mass assignment vulnerabilities unless an explicit whitelist is enforced at either the controller or model boundary.
+**Prevention:** Always define an explicit whitelist of allowed properties for creation and updates at the model boundary. Use strict `!== undefined` checks to validate optional fields against predefined enum dictionaries before applying updates. Assign a `status = 400` property on thrown validation errors so the global middleware gracefully translates them into client-safe HTTP Bad Request responses instead of internal server errors.
