@@ -1,0 +1,4 @@
+## 2026-08-13 - Mass Assignment and Insecure Enum Validation in Tasks Model
+**Vulnerability:** Insecure mass assignment allowed arbitrary fields (such as `id`, `createdAt`) to be modified via the request body during task updates. Additionally, status and priority enums were not validated on creation or updates, permitting invalid status values or unhandled properties to bypass logic checks.
+**Learning:** Model-level update functions must explicitly whitelist valid properties rather than utilizing a full spread (`...data`) of the request payload, and must enforce strict enum validation with status code mapped errors to avoid silently accepting bad input or breaking downstream services.
+**Prevention:** Always restrict update payload mapping using explicit whitelists of allowed update parameters. Enforce validation early in the execution model and propagate structured error objects with predefined status codes (like 400 Bad Request).
