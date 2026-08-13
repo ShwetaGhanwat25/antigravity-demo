@@ -9,7 +9,21 @@ function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
+function validateEnums(status, priority) {
+    if (status !== undefined && !Object.values(TaskStatus).includes(status)) {
+        const err = new Error(`Invalid status: ${status}. Must be one of: ${Object.values(TaskStatus).join(', ')}`);
+        err.status = 400;
+        throw err;
+    }
+    if (priority !== undefined && !Object.values(TaskPriority).includes(priority)) {
+        const err = new Error(`Invalid priority: ${priority}. Must be one of: ${Object.values(TaskPriority).join(', ')}`);
+        err.status = 400;
+        throw err;
+    }
+}
+
 function create(data) {
+    validateEnums(data.status, data.priority);
     const task = {
         id: uuidv4(),
         title: data.title,
@@ -27,7 +41,18 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    validateEnums(data.status, data.priority);
+
+    // Whitelist only allowed fields to protect against mass assignment
+    const allowedUpdates = {};
+    if (data.title !== undefined) allowedUpdates.title = data.title;
+    if (data.description !== undefined) allowedUpdates.description = data.description;
+    if (data.status !== undefined) allowedUpdates.status = data.status;
+    if (data.priority !== undefined) allowedUpdates.priority = data.priority;
+    if (data.assignedTo !== undefined) allowedUpdates.assignedTo = data.assignedTo;
+
+    tasks[index] = { ...tasks[index], ...allowedUpdates, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
