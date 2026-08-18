@@ -149,26 +149,52 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 # ── LLM call ────────────────────────────────────────────────────────────────
 
 def _call_llm(prompt, retries=1):
-    for attempt in range(retries + 1):
-        try:
-            if USE_GEMINI:
+    if USE_GEMINI:
+        for attempt in range(retries + 1):
+            try:
                 result = _gemini_client.models.generate_content(
                     model="gemini-2.0-flash-lite", contents=prompt
                 )
                 return result.text
-            else:
+            except Exception as e:
+                print(f"[reviewer] gemini error (attempt {attempt+1}): {e}")
+                if attempt < retries:
+                    time.sleep(2)
+    else:
+        groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma2-9b-it"]
+        for model in groq_models:
+            try:
                 completion = _groq_client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model=model,
                     max_tokens=2048,
                     messages=[{"role": "user", "content": prompt}]
                 )
+                print(f"[reviewer] Successfully generated review using Groq model '{model}'")
                 return completion.choices[0].message.content
-        except Exception as e:
-            if attempt < retries:
-                print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
-                time.sleep(3)
-            else:
-                raise
+            except Exception as e:
+                print(f"[reviewer] Groq model '{model}' failed: {e}")
+
+    # Fallback response if LLM API calls fail
+    return """## Summary
+Automated review was unable to complete because external LLM service calls failed.
+
+## Issues Found
+
+### 🔴 CRITICAL
+None
+
+### 🟡 WARNING
+Review service unavailable.
+
+### 🟢 INFO
+None
+
+## Suggestions
+Please re-trigger or manually review this pull request.
+
+## Verdict
+⚠️ Needs Changes
+Automated AI review could not be completed; manual review required."""
 
 
 def build_review_prompt(pr_title, author, repo, diff):
