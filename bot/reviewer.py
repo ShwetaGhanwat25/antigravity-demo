@@ -148,27 +148,55 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 
 # ── LLM call ────────────────────────────────────────────────────────────────
 
+GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]
+
 def _call_llm(prompt, retries=1):
-    for attempt in range(retries + 1):
-        try:
-            if USE_GEMINI:
+    if USE_GEMINI:
+        for attempt in range(retries + 1):
+            try:
                 result = _gemini_client.models.generate_content(
                     model="gemini-2.0-flash-lite", contents=prompt
                 )
                 return result.text
-            else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
-        except Exception as e:
-            if attempt < retries:
-                print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
-                time.sleep(3)
-            else:
-                raise
+            except Exception as e:
+                print(f"[reviewer] gemini error (attempt {attempt + 1}): {e}")
+                if attempt < retries:
+                    time.sleep(3)
+    else:
+        for model in GROQ_MODELS:
+            for attempt in range(retries + 1):
+                try:
+                    completion = _groq_client.chat.completions.create(
+                        model=model,
+                        max_tokens=2048,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    return completion.choices[0].message.content
+                except Exception as e:
+                    print(f"[reviewer] groq error with model {model} (attempt {attempt + 1}): {e}")
+                    if attempt < retries:
+                        time.sleep(1)
+
+    return """## Summary
+Automated review model unavailable.
+
+## Issues Found
+
+### 🔴 CRITICAL
+None
+
+### 🟡 WARNING
+None
+
+### 🟢 INFO
+None
+
+## Suggestions
+None
+
+## Verdict
+⚠️ Needs Changes
+Unable to contact review model. Defaulting securely to Needs Changes."""
 
 
 def build_review_prompt(pr_title, author, repo, diff):
