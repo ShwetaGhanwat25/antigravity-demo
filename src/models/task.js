@@ -7,6 +7,7 @@ const TaskPriority = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
 
 // Security: Validate enum values fast and attach status = 400 for errorHandler middleware
 function validateEnums(data) {
+    if (!data) return;
     if (data.status !== undefined && !Object.values(TaskStatus).includes(data.status)) {
         const err = new Error(`Invalid status: ${data.status}. Allowed values: ${Object.values(TaskStatus).join(', ')}`);
         err.status = 400;
@@ -27,11 +28,11 @@ function create(data) {
     validateEnums(data);
     const task = {
         id: uuidv4(),
-        title: data.title,
-        description: data.description || '',
-        status: data.status || TaskStatus.TODO,
-        priority: data.priority || TaskPriority.MEDIUM,
-        assignedTo: data.assignedTo || null,
+        title: data ? data.title : '',
+        description: (data && data.description) || '',
+        status: (data && data.status) || TaskStatus.TODO,
+        priority: (data && data.priority) || TaskPriority.MEDIUM,
+        assignedTo: (data && data.assignedTo) || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
@@ -48,9 +49,11 @@ function update(id, data) {
     // Security: Whitelist allowed fields to prevent mass assignment vulnerabilities
     const allowedFields = ['title', 'description', 'status', 'priority', 'assignedTo'];
     const updates = {};
-    for (const field of allowedFields) {
-        if (data[field] !== undefined) {
-            updates[field] = data[field];
+    if (data) {
+        for (const field of allowedFields) {
+            if (data[field] !== undefined) {
+                updates[field] = data[field];
+            }
         }
     }
 
