@@ -1,14 +1,21 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const { isValidEmail, sanitizeString } = require('../utils/validators');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRY = '24h';
 
 async function register(req, res, next) {
     try {
-        const { name, email, password } = req.body;
+        let { name, email, password } = req.body;
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'name, email, and password are required' });
+        }
+        name = sanitizeString(String(name).trim());
+        email = String(email).trim().toLowerCase();
+        // 🛡️ Sentinel: Validate email format to prevent malicious input and invalid user data
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ error: 'invalid email format' });
         }
         if (password.length < 8) {
             return res.status(400).json({ error: 'password must be at least 8 characters' });
