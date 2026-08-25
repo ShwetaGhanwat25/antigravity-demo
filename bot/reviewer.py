@@ -149,6 +149,7 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 # ── LLM call ────────────────────────────────────────────────────────────────
 
 def _call_llm(prompt, retries=1):
+    groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]
     for attempt in range(retries + 1):
         try:
             if USE_GEMINI:
@@ -157,18 +158,44 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                for model_name in groq_models:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=model_name,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as m_err:
+                        print(f"[reviewer] Groq model {model_name} failed: {m_err}")
+                        continue
+                raise RuntimeError("All Groq model attempts failed.")
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
                 time.sleep(3)
             else:
-                raise
+                print(f"[reviewer] Warning: LLM call failed completely ({e}). Falling back to default review response.")
+                return """## Summary
+Automated review failed to contact LLM provider.
+
+## Issues Found
+
+### 🔴 CRITICAL
+None
+
+### 🟡 WARNING
+None
+
+### 🟢 INFO
+None
+
+## Suggestions
+Please manually review this PR as automated LLM review encountered API connection issues.
+
+## Verdict
+⚠️ Needs Changes
+Automated review failed to obtain LLM evaluation."""
 
 
 def build_review_prompt(pr_title, author, repo, diff):
