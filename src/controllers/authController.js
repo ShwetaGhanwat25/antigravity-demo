@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const { isValidEmail } = require('../utils/validators');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRY = '24h';
@@ -9,6 +10,9 @@ async function register(req, res, next) {
         const { name, email, password } = req.body;
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'name, email, and password are required' });
+        }
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ error: 'invalid email format' });
         }
         if (password.length < 8) {
             return res.status(400).json({ error: 'password must be at least 8 characters' });
