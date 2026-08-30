@@ -157,18 +157,32 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                models_to_try = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]
+                last_err = None
+                for m in models_to_try:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=m,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as ge:
+                        last_err = ge
+                        print(f"[reviewer] Groq model '{m}' failed: {ge}")
+                raise last_err
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
                 time.sleep(3)
             else:
-                raise
+                print(f"[reviewer] All LLM calls failed. Fallback to default review. Error: {e}")
+                return (
+                    "## Summary\nAutomated review fallback due to LLM provider unavailability.\n\n"
+                    "## Issues Found\n\n### 🔴 CRITICAL\nNone\n\n### 🟡 WARNING\nNone\n\n### 🟢 INFO\nNone\n\n"
+                    "## Suggestions\nEnsure manual review is conducted.\n\n"
+                    "## Verdict\n⚠️ Needs Changes\nLLM provider failed to generate automated review."
+                )
 
 
 def build_review_prompt(pr_title, author, repo, diff):
