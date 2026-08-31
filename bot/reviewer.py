@@ -149,26 +149,56 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 # ── LLM call ────────────────────────────────────────────────────────────────
 
 def _call_llm(prompt, retries=1):
-    for attempt in range(retries + 1):
-        try:
-            if USE_GEMINI:
+    if USE_GEMINI:
+        for attempt in range(retries + 1):
+            try:
                 result = _gemini_client.models.generate_content(
                     model="gemini-2.0-flash-lite", contents=prompt
                 )
                 return result.text
-            else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
-        except Exception as e:
-            if attempt < retries:
-                print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
-                time.sleep(3)
-            else:
-                raise
+            except Exception as e:
+                if attempt < retries:
+                    print(f"[reviewer] gemini error, retrying in 3s: {e}")
+                    time.sleep(3)
+                else:
+                    print(f"[reviewer] gemini error: {e}")
+    else:
+        groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192", "llama3-8b-8192"]
+        for model_name in groq_models:
+            for attempt in range(retries + 1):
+                try:
+                    completion = _groq_client.chat.completions.create(
+                        model=model_name,
+                        max_tokens=2048,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    return completion.choices[0].message.content
+                except Exception as e:
+                    print(f"[reviewer] groq error on model {model_name}: {e}")
+                    if attempt < retries:
+                        time.sleep(1)
+
+    print("[reviewer] All LLM provider attempts failed. Falling back to default review.")
+    return """## Summary
+Automated review failed to complete due to external LLM API availability.
+
+## Issues Found
+
+### 🔴 CRITICAL
+None
+
+### 🟡 WARNING
+None
+
+### 🟢 INFO
+None
+
+## Suggestions
+None
+
+## Verdict
+⚠️ Needs Changes
+Automated review could not be completed."""
 
 
 def build_review_prompt(pr_title, author, repo, diff):
