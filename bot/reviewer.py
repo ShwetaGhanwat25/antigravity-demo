@@ -149,6 +149,7 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 # ── LLM call ────────────────────────────────────────────────────────────────
 
 def _call_llm(prompt, retries=1):
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]
     for attempt in range(retries + 1):
         try:
             if USE_GEMINI:
@@ -157,18 +158,43 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                for model_name in models:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=model_name,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as model_err:
+                        print(f"[reviewer] Groq model {model_name} failed: {model_err}")
+                raise RuntimeError("All Groq fallback models failed")
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
                 time.sleep(3)
             else:
-                raise
+                print(f"[reviewer] LLM call completely failed: {e}. Defaulting to safe fallback response.")
+                return """## Summary
+Automated review failed to contact external LLM provider.
+
+## Issues Found
+
+### 🔴 CRITICAL
+None
+
+### 🟡 WARNING
+None
+
+### 🟢 INFO
+None
+
+## Suggestions
+None
+
+## Verdict
+⚠️ Needs Changes
+External LLM review could not be completed."""
 
 
 def build_review_prompt(pr_title, author, repo, diff):
