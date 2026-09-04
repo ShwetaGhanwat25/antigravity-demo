@@ -158,12 +158,12 @@ def _call_llm(prompt, retries=1):
                 return result.text
             else:
                 groq_models = [
+                    "llama-3.1-8b-instant",
+                    "llama-3.2-3b-preview",
+                    "llama-3.2-1b-preview",
                     "llama-3.3-70b-versatile",
-                    "llama3-70b-8192",
-                    "llama-3.3-70b-specdec",
-                    "llama3-8b-8192",
-                    "mixtral-8x7b-32768",
-                    "gemma2-9b-it"
+                    "qwen-2.5-32b",
+                    "deepseek-r1-distill-llama-70b"
                 ]
                 last_err = None
                 for model_name in groq_models:
