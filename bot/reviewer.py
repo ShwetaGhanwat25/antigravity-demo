@@ -157,12 +157,23 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                groq_models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"]
+                last_err = None
+                for model_name in groq_models:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=model_name,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as ge:
+                        last_err = ge
+                        if "404" in str(ge) or "model_not_found" in str(ge):
+                            continue
+                        raise ge
+                if last_err:
+                    raise last_err
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
