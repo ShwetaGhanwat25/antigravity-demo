@@ -157,7 +157,14 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                groq_models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"]
+                groq_models = [
+                    "llama-3.3-70b-versatile",
+                    "llama3-70b-8192",
+                    "llama-3.3-70b-specdec",
+                    "llama3-8b-8192",
+                    "mixtral-8x7b-32768",
+                    "gemma2-9b-it"
+                ]
                 last_err = None
                 for model_name in groq_models:
                     try:
@@ -169,9 +176,8 @@ def _call_llm(prompt, retries=1):
                         return completion.choices[0].message.content
                     except Exception as ge:
                         last_err = ge
-                        if "404" in str(ge) or "model_not_found" in str(ge):
-                            continue
-                        raise ge
+                        print(f"[reviewer] Groq model '{model_name}' failed: {ge}. Trying next model...")
+                        continue
                 if last_err:
                     raise last_err
         except Exception as e:
