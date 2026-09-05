@@ -148,14 +148,28 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 
 # ── LLM call ────────────────────────────────────────────────────────────────
 
-GROQ_MODELS = [
+FALLBACK_GROQ_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "llama-3.2-3b-preview",
-    "llama-3.2-1b-preview",
-    "qwen-2.5-32b",
-    "deepseek-r1-distill-llama-70b",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
 ]
+
+def _get_groq_models():
+    try:
+        models_data = _groq_client.models.list()
+        active_models = [m.id for m in models_data.data if getattr(m, 'active', True)]
+        if active_models:
+            # Sort preferred models first if available
+            preferred = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+            ordered = [m for m in preferred if m in active_models]
+            for m in active_models:
+                if m not in ordered:
+                    ordered.append(m)
+            return ordered
+    except Exception as e:
+        print(f"[reviewer] Failed to list Groq models dynamically: {e}")
+    return FALLBACK_GROQ_MODELS
 
 def _call_llm(prompt, retries=1):
     if USE_GEMINI:
@@ -173,7 +187,8 @@ def _call_llm(prompt, retries=1):
                     raise
     else:
         last_exception = None
-        for model_name in GROQ_MODELS:
+        models_to_try = _get_groq_models()
+        for model_name in models_to_try:
             for attempt in range(retries + 1):
                 try:
                     completion = _groq_client.chat.completions.create(
@@ -184,9 +199,8 @@ def _call_llm(prompt, retries=1):
                     return completion.choices[0].message.content
                 except Exception as e:
                     last_exception = e
-                    # Check if error indicates model not found/decommissioned or request error
                     err_str = str(e).lower()
-                    if "model_not_found" in err_str or "404" in err_str or "decommissioned" in err_str:
+                    if "model_not_found" in err_str or "404" in err_str or "decommissioned" in err_str or "not_found" in err_str:
                         print(f"[reviewer] groq model '{model_name}' unavailable ({e}), trying next model...")
                         break
                     if attempt < retries:
