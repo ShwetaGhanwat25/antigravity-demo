@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { sanitizeString } = require('../utils/validators');
 
 const tasks = [];
 
@@ -10,10 +11,14 @@ function findAll() { return tasks; }
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
 function create(data) {
+    // 🛡️ Sentinel: Sanitize user input to prevent Stored XSS / injection attacks
+    const title = typeof data.title === 'string' ? sanitizeString(data.title) : data.title;
+    const description = typeof data.description === 'string' ? sanitizeString(data.description) : (data.description || '');
+
     const task = {
         id: uuidv4(),
-        title: data.title,
-        description: data.description || '',
+        title,
+        description,
         status: data.status || TaskStatus.TODO,
         priority: data.priority || TaskPriority.MEDIUM,
         assignedTo: data.assignedTo || null,
@@ -27,7 +32,17 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+
+    const updatedData = { ...data };
+    // 🛡️ Sentinel: Sanitize user input during update to prevent Stored XSS / injection attacks
+    if (typeof updatedData.title === 'string') {
+        updatedData.title = sanitizeString(updatedData.title);
+    }
+    if (typeof updatedData.description === 'string') {
+        updatedData.description = sanitizeString(updatedData.description);
+    }
+
+    tasks[index] = { ...tasks[index], ...updatedData, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 

@@ -148,27 +148,67 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 
 # ── LLM call ────────────────────────────────────────────────────────────────
 
+FALLBACK_GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+]
+
+def _get_groq_models():
+    try:
+        models_data = _groq_client.models.list()
+        active_models = [m.id for m in models_data.data if getattr(m, 'active', True)]
+        if active_models:
+            # Sort preferred models first if available
+            preferred = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+            ordered = [m for m in preferred if m in active_models]
+            for m in active_models:
+                if m not in ordered:
+                    ordered.append(m)
+            return ordered
+    except Exception as e:
+        print(f"[reviewer] Failed to list Groq models dynamically: {e}")
+    return FALLBACK_GROQ_MODELS
+
 def _call_llm(prompt, retries=1):
-    for attempt in range(retries + 1):
-        try:
-            if USE_GEMINI:
+    if USE_GEMINI:
+        for attempt in range(retries + 1):
+            try:
                 result = _gemini_client.models.generate_content(
                     model="gemini-2.0-flash-lite", contents=prompt
                 )
                 return result.text
-            else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
-        except Exception as e:
-            if attempt < retries:
-                print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
-                time.sleep(3)
-            else:
-                raise
+            except Exception as e:
+                if attempt < retries:
+                    print(f"[reviewer] gemini error, retrying in 3s: {e}")
+                    time.sleep(3)
+                else:
+                    raise
+    else:
+        last_exception = None
+        models_to_try = _get_groq_models()
+        for model_name in models_to_try:
+            for attempt in range(retries + 1):
+                try:
+                    completion = _groq_client.chat.completions.create(
+                        model=model_name,
+                        max_tokens=2048,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    return completion.choices[0].message.content
+                except Exception as e:
+                    last_exception = e
+                    err_str = str(e).lower()
+                    if "model_not_found" in err_str or "404" in err_str or "decommissioned" in err_str or "not_found" in err_str:
+                        print(f"[reviewer] groq model '{model_name}' unavailable ({e}), trying next model...")
+                        break
+                    if attempt < retries:
+                        print(f"[reviewer] groq error with model '{model_name}', retrying in 3s: {e}")
+                        time.sleep(3)
+                    else:
+                        print(f"[reviewer] groq model '{model_name}' failed after retries, trying next model...")
+        raise last_exception
 
 
 def build_review_prompt(pr_title, author, repo, diff):
