@@ -148,6 +148,8 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 
 # ── LLM call ────────────────────────────────────────────────────────────────
 
+GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+
 def _call_llm(prompt, retries=1):
     for attempt in range(retries + 1):
         try:
@@ -157,12 +159,31 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                models_to_try = list(GROQ_MODELS)
+                try:
+                    models_res = _groq_client.models.list()
+                    active_ids = {m.id for m in models_res.data}
+                    active_candidates = [m for m in GROQ_MODELS if m in active_ids]
+                    if active_candidates:
+                        models_to_try = active_candidates
+                except Exception as ex:
+                    print(f"[reviewer] Could not list Groq models: {ex}")
+
+                last_err = None
+                for model_name in models_to_try:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=model_name,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as err:
+                        last_err = err
+                        print(f"[reviewer] Groq model '{model_name}' failed: {err}")
+                        continue
+                if last_err:
+                    raise last_err
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")

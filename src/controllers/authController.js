@@ -8,18 +8,21 @@ const JWT_EXPIRY = '24h';
 async function register(req, res, next) {
     try {
         const { name, email, password } = req.body;
-        if (!name || !email || !password) {
+        if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'name, email, and password are required' });
+        }
+        const sanitizedName = sanitizeString(name).trim();
+        if (sanitizedName.length === 0) {
             return res.status(400).json({ error: 'name, email, and password are required' });
         }
         // 🛡️ Sentinel: Enforce email format validation and input sanitization
-        const cleanEmail = typeof email === 'string' ? sanitizeString(email).trim().toLowerCase() : '';
+        const cleanEmail = sanitizeString(email).trim().toLowerCase();
         if (!isValidEmail(cleanEmail)) {
             return res.status(400).json({ error: 'invalid email format' });
         }
-        if (typeof password !== 'string' || password.length < 8) {
+        if (password.length < 8) {
             return res.status(400).json({ error: 'password must be at least 8 characters' });
         }
-        const sanitizedName = typeof name === 'string' ? sanitizeString(name).trim() : '';
         const existing = await User.findByEmail(cleanEmail);
         if (existing) {
             return res.status(409).json({ error: 'email already registered' });
