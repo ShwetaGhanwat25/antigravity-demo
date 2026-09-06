@@ -148,6 +148,8 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 
 # ── LLM call ────────────────────────────────────────────────────────────────
 
+GROQ_MODELS = ["llama3-70b-8192", "llama3-8b-8192", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+
 def _call_llm(prompt, retries=1):
     for attempt in range(retries + 1):
         try:
@@ -157,12 +159,36 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                models_to_try = []
+                try:
+                    models_res = _groq_client.models.list()
+                    non_chat_keywords = ("whisper", "guard", "audio", "embed", "safetensors")
+                    for m in models_res.data:
+                        mid = m.id.lower()
+                        if not any(k in mid for k in non_chat_keywords):
+                            models_to_try.append(m.id)
+                except Exception as ex:
+                    print(f"[reviewer] Could not list Groq models: {ex}")
+
+                for m in GROQ_MODELS:
+                    if m not in models_to_try:
+                        models_to_try.append(m)
+
+                last_err = None
+                for model_name in models_to_try:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=model_name,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as err:
+                        last_err = err
+                        print(f"[reviewer] Groq model '{model_name}' failed: {err}")
+                        continue
+                if last_err:
+                    raise last_err
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")
