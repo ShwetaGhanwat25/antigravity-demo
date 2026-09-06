@@ -148,7 +148,7 @@ def notify_google_chat(pr_title, pr_number, pr_url, repo, author, verdict, summa
 
 # ── LLM call ────────────────────────────────────────────────────────────────
 
-GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+GROQ_MODELS = ["llama3-70b-8192", "llama3-8b-8192", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
 def _call_llm(prompt, retries=1):
     for attempt in range(retries + 1):
@@ -159,15 +159,20 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                models_to_try = list(GROQ_MODELS)
+                models_to_try = []
                 try:
                     models_res = _groq_client.models.list()
-                    active_ids = {m.id for m in models_res.data}
-                    active_candidates = [m for m in GROQ_MODELS if m in active_ids]
-                    if active_candidates:
-                        models_to_try = active_candidates
+                    non_chat_keywords = ("whisper", "guard", "audio", "embed", "safetensors")
+                    for m in models_res.data:
+                        mid = m.id.lower()
+                        if not any(k in mid for k in non_chat_keywords):
+                            models_to_try.append(m.id)
                 except Exception as ex:
                     print(f"[reviewer] Could not list Groq models: {ex}")
+
+                for m in GROQ_MODELS:
+                    if m not in models_to_try:
+                        models_to_try.append(m)
 
                 last_err = None
                 for model_name in models_to_try:
