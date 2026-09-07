@@ -1,0 +1,4 @@
+## 2026-08-03 - Task Model Mass Assignment & Strict Enum Validation
+**Vulnerability:** `Task.update` used object spread `{ ...tasks[index], ...data }` directly on unvalidated request input, allowing callers to overwrite internal metadata fields (`id`, `createdAt`). Additionally, invalid enum values (such as unknown task statuses/priorities) were silently accepted or corrupting task state.
+**Learning:** Model-layer update methods must explicitly whitelist mutable fields rather than spreading raw payload objects. Thrown validation errors must set `err.status = 400` so Express error handler middleware propagates client-friendly validation errors rather than masking them as 500 Internal Server Errors.
+**Prevention:** Enforce field whitelisting and helper validation functions in model layer methods before merging user-supplied updates into stored models.
