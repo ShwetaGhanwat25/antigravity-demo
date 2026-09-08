@@ -25,10 +25,12 @@ function findById(id) { return tasks.find(t => t.id === id) || null; }
 
 function create(data) {
     validateEnums(data.status, data.priority);
+    const title = typeof data.title === 'string' ? sanitizeString(data.title) : String(data.title || '');
+    const description = typeof data.description === 'string' ? sanitizeString(data.description) : String(data.description || '');
     const task = {
         id: uuidv4(),
-        title: sanitizeString(data.title),
-        description: data.description ? sanitizeString(data.description) : '',
+        title,
+        description,
         status: data.status || TaskStatus.TODO,
         priority: data.priority || TaskPriority.MEDIUM,
         assignedTo: data.assignedTo || null,
@@ -51,8 +53,8 @@ function update(id, data) {
 
     allowedFields.forEach(field => {
         if (data[field] !== undefined) {
-            if ((field === 'title' || field === 'description') && typeof data[field] === 'string') {
-                updates[field] = sanitizeString(data[field]);
+            if (field === 'title' || field === 'description') {
+                updates[field] = sanitizeString(String(data[field]));
             } else {
                 updates[field] = data[field];
             }

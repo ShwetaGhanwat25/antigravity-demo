@@ -157,8 +157,16 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
+                model_name = "llama-3.1-8b-instant"
+                try:
+                    models_resp = _groq_client.models.list()
+                    chat_models = [m.id for m in models_resp.data if not any(x in m.id for x in ['whisper', 'guard', 'audio', 'embed', 'safetensors'])]
+                    if chat_models:
+                        model_name = next((m for m in chat_models if "70b" in m), chat_models[0])
+                except Exception as ex:
+                    print(f"[reviewer] Groq model listing fallback: {ex}")
                 completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                    model=model_name,
                     max_tokens=2048,
                     messages=[{"role": "user", "content": prompt}]
                 )
