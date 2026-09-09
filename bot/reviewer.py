@@ -157,12 +157,40 @@ def _call_llm(prompt, retries=1):
                 )
                 return result.text
             else:
-                completion = _groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return completion.choices[0].message.content
+                candidate_models = [
+                    "llama-3.3-70b-versatile",
+                    "llama-3.1-70b-versatile",
+                    "llama-3.1-8b-instant",
+                    "llama3-70b-8192",
+                    "llama3-8b-8192",
+                    "mixtral-8x7b-32768"
+                ]
+                try:
+                    active_models = [
+                        m.id for m in _groq_client.models.list().data
+                        if not any(x in m.id for x in ['whisper', 'guard', 'audio', 'embed', 'safetensors'])
+                    ]
+                    for m in active_models:
+                        if m not in candidate_models:
+                            candidate_models.append(m)
+                except Exception:
+                    pass
+
+                last_error = None
+                for model_name in candidate_models:
+                    try:
+                        completion = _groq_client.chat.completions.create(
+                            model=model_name,
+                            max_tokens=2048,
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        return completion.choices[0].message.content
+                    except Exception as model_err:
+                        last_error = model_err
+                        # Continue trying other candidate models if the current model fails
+                        continue
+                if last_error:
+                    raise last_error
         except Exception as e:
             if attempt < retries:
                 print(f"[reviewer] {_provider} error, retrying in 3s: {e}")

@@ -1,19 +1,34 @@
 const { v4: uuidv4 } = require('uuid');
+const { sanitizeString } = require('../utils/validators');
 
 const tasks = [];
 
 const TaskStatus = { TODO: 'todo', IN_PROGRESS: 'in_progress', DONE: 'done' };
 const TaskPriority = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
 
+function validateEnums(status, priority) {
+    if (status !== undefined && !Object.values(TaskStatus).includes(status)) {
+        const err = new Error('Invalid status value');
+        err.status = 400;
+        throw err;
+    }
+    if (priority !== undefined && !Object.values(TaskPriority).includes(priority)) {
+        const err = new Error('Invalid priority value');
+        err.status = 400;
+        throw err;
+    }
+}
+
 function findAll() { return tasks; }
 
 function findById(id) { return tasks.find(t => t.id === id) || null; }
 
 function create(data) {
+    validateEnums(data.status, data.priority);
     const task = {
         id: uuidv4(),
-        title: data.title,
-        description: data.description || '',
+        title: sanitizeString(data.title),
+        description: data.description ? sanitizeString(data.description) : '',
         status: data.status || TaskStatus.TODO,
         priority: data.priority || TaskPriority.MEDIUM,
         assignedTo: data.assignedTo || null,
@@ -27,7 +42,18 @@ function create(data) {
 function update(id, data) {
     const index = tasks.findIndex(t => t.id === id);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...data, updatedAt: new Date().toISOString() };
+    validateEnums(data.status, data.priority);
+
+    // 🛡️ Sentinel: Whitelist allowed update fields to prevent Mass Assignment
+    const allowed = ['title', 'description', 'status', 'priority', 'assignedTo'];
+    const updateData = {};
+    for (const key of allowed) {
+        if (data[key] !== undefined) {
+            updateData[key] = typeof data[key] === 'string' ? sanitizeString(data[key]) : data[key];
+        }
+    }
+
+    tasks[index] = { ...tasks[index], ...updateData, updatedAt: new Date().toISOString() };
     return tasks[index];
 }
 
