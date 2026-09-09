@@ -187,9 +187,8 @@ def _call_llm(prompt, retries=1):
                         return completion.choices[0].message.content
                     except Exception as model_err:
                         last_error = model_err
-                        if "model_not_found" in str(model_err) or "does not exist" in str(model_err):
-                            continue
-                        raise model_err
+                        # Continue trying other candidate models if the current model fails
+                        continue
                 if last_error:
                     raise last_error
         except Exception as e:
